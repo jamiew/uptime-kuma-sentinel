@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>uptime-kuma-sentinel 🛸</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --primary: #00ff88;
+            --secondary: #ff0099;
+            --warning: #ffaa00;
+            --bg: #000;
+            --surface: #0a0a0a;
+            --text: #fff;
+            --text-dim: #888;
+            --border: #222;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Cyberpunk grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(0deg, transparent 24%, rgba(0, 255, 136, 0.03) 25%, rgba(0, 255, 136, 0.03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 136, 0.03) 75%, rgba(0, 255, 136, 0.03) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 255, 136, 0.03) 25%, rgba(0, 255, 136, 0.03) 26%, transparent 27%, transparent 74%, rgba(0, 255, 136, 0.03) 75%, rgba(0, 255, 136, 0.03) 76%, transparent 77%, transparent);
+            background-size: 50px 50px;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-transform: lowercase;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            color: var(--text-dim);
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            margin-bottom: 2rem;
+        }
+
+        .warning {
+            background: var(--surface);
+            border: 1px solid var(--warning);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 2rem 0;
+            color: var(--warning);
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .warning::before {
+            content: '⚠️ ';
+        }
+
+        section {
+            margin: 3rem 0;
+        }
+
+        h2 {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            position: relative;
+            padding-left: 1rem;
+        }
+
+        h2::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        h3 {
+            font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+            margin: 2rem 0 1rem 0;
+            color: var(--text);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            font-size: clamp(1rem, 1.5vw, 1.1rem);
+            color: var(--text-dim);
+        }
+
+        .highlight {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .problem-box, .solution-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2rem;
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .problem-box {
+            border-left: 3px solid var(--secondary);
+        }
+
+        .solution-box {
+            border-left: 3px solid var(--primary);
+        }
+
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: 'TERMINAL';
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--primary);
+            color: var(--bg);
+            padding: 0.2rem 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(0.9rem, 1.3vw, 1rem);
+            line-height: 1.5;
+            color: var(--primary);
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--surface);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            color: var(--primary);
+        }
+
+        .steps {
+            counter-reset: step;
+            margin: 2rem 0;
+        }
+
+        .step {
+            margin: 1.5rem 0;
+            padding-left: 3rem;
+            position: relative;
+            counter-increment: step;
+        }
+
+        .step::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2rem;
+            height: 2rem;
+            background: var(--primary);
+            color: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border-radius: 50%;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: clamp(0.9rem, 1.3vw, 1rem);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            z-index: -1;
+            transition: left 0.3s ease;
+        }
+
+        .btn:hover {
+            color: var(--bg);
+        }
+
+        .btn:hover::before {
+            left: 0;
+        }
+
+        .btn.secondary {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .btn.secondary::before {
+            background: var(--secondary);
+        }
+
+        footer {
+            margin-top: 5rem;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .glitch {
+            position: relative;
+            display: inline-block;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+
+        .glitch::before {
+            animation: glitch-1 0.3s infinite;
+            color: var(--primary);
+            z-index: -1;
+        }
+
+        .glitch::after {
+            animation: glitch-2 0.3s infinite;
+            color: var(--secondary);
+            z-index: -2;
+        }
+
+        @keyframes glitch-1 {
+            0%, 100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+            20% { clip-path: inset(20% 0 30% 0); transform: translate(-2px, 2px); }
+            40% { clip-path: inset(50% 0 30% 0); transform: translate(2px, -2px); }
+            60% { clip-path: inset(70% 0 10% 0); transform: translate(-1px, 1px); }
+            80% { clip-path: inset(0 0 90% 0); transform: translate(1px, -1px); }
+        }
+
+        @keyframes glitch-2 {
+            0%, 100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+            20% { clip-path: inset(80% 0 10% 0); transform: translate(2px, -2px); }
+            40% { clip-path: inset(10% 0 80% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(40% 0 40% 0); transform: translate(1px, -1px); }
+            80% { clip-path: inset(0 0 70% 0); transform: translate(-1px, 1px); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header {
+                padding: 2rem 0;
+            }
+
+            .code-block {
+                padding: 1rem;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="glitch" data-text="uptime-kuma-sentinel 🛸">uptime-kuma-sentinel 🛸</h1>
+            <p class="tagline">stops uptime kuma from freaking out when your internet dies</p>
+            <div class="warning">WIP - prone to breakage. PRs welcome.</div>
+        </header>
+
+        <section id="problem">
+            <h2>The Problem</h2>
+            <div class="problem-box">
+                <p>You're monitoring local services AND external sites. Internet drops at <span class="highlight">3am</span>.</p>
+                <p>Suddenly you're getting 50 alerts about "Google is down" when really it's just your crappy ISP.</p>
+                <p>Meanwhile your local services are fine but you can't tell through all the noise.</p>
+            </div>
+        </section>
+
+        <section id="solution">
+            <h2>The Solution</h2>
+            <div class="solution-box">
+                <p>Watches a sentinel monitor (like <span class="highlight">Cloudflare DNS</span>).</p>
+                <p>When internet dies, auto-pauses all monitors in your <span class="highlight">"internet-dependent"</span> group.</p>
+                <p>When it's back, resumes them. Local services keep running. No false alarms.</p>
+            </div>
+        </section>
+
+        <section id="install">
+            <h2>Quick Install</h2>
+
+            <h3>Docker (Recommended)</h3>
+            <div class="code-block">
+                <pre>docker run -d \
+  -e KUMA_URL=http://your-kuma:3001 \
+  -e KUMA_USER=admin \
+  -e KUMA_PASS=yourpass \
+  -e GROUP_TO_PAUSE=Sentinel \
+  ghcr.io/jamiew/uptime-kuma-sentinel:latest</pre>
+            </div>
+
+            <h3>From Source</h3>
+            <div class="code-block">
+                <pre>git clone https://github.com/jamiew/uptime-kuma-sentinel
+cd uptime-kuma-sentinel
+pnpm install && pnpm run build
+pnpm start</pre>
+            </div>
+        </section>
+
+        <section id="setup">
+            <h2>Setup</h2>
+            <div class="steps">
+                <div class="step">
+                    <p>Create sentinel monitor in Kuma (check <code>1.1.1.1:53</code> or <code>google.com</code>)</p>
+                </div>
+                <div class="step">
+                    <p>Create a group called <code>Sentinel</code> and add external monitors to it</p>
+                </div>
+                <div class="step">
+                    <p>Run this sentinel</p>
+                </div>
+                <div class="step">
+                    <p>Sleep better</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="config">
+            <h2>Configuration</h2>
+            <div class="code-block">
+                <pre>KUMA_URL=http://localhost:3001      # Your Kuma instance
+KUMA_USER=admin                     # Username
+KUMA_PASS=changeme                  # Password
+SENTINEL_NAME=INTERNET-SENTINEL     # Monitor that checks internet
+GROUP_TO_PAUSE=Sentinel             # Group containing external monitors</pre>
+            </div>
+        </section>
+
+        <section id="links">
+            <div class="buttons">
+                <a href="https://github.com/jamiew/uptime-kuma-sentinel" class="btn">GitHub</a>
+                <a href="https://github.com/jamiew/uptime-kuma-sentinel/releases" class="btn secondary">Releases</a>
+            </div>
+        </section>
+
+        <footer>
+            <p>built for spotty home internet connections</p>
+            <p>© 2024 · MIT License · <a href="https://github.com/jamiew" style="color: var(--primary); text-decoration: none;">@jamiew</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Add some cyberpunk console messages
+        console.log('%c🛸 UPTIME-KUMA-SENTINEL', 'color: #00ff88; font-size: 20px; font-weight: bold;');
+        console.log('%cYour monitoring monitor is being monitored', 'color: #888; font-style: italic;');
+
+        // Random glitch effect on title
+        const title = document.querySelector('h1');
+        setInterval(() => {
+            if (Math.random() > 0.95) {
+                title.style.transform = `translate(${Math.random() * 4 - 2}px, ${Math.random() * 4 - 2}px)`;
+                setTimeout(() => {
+                    title.style.transform = 'translate(0, 0)';
+                }, 50);
+            }
+        }, 100);
+    </script>
+</body>
+</html>
