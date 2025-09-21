@@ -1,20 +1,43 @@
-FROM node:20-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
-# App dir
 WORKDIR /app
 
-# Install socket.io client
-RUN npm i socket.io-client@latest
+# Copy package files
+COPY package*.json ./
 
-# Add the script
-COPY sentinel.mjs /app/sentinel.mjs
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
 
-# Default envs (override at runtime)
-ENV KUMA_URL=http://localhost:3001 \
-  KUMA_USER=admin \
-  KUMA_PASS=changeme \
-  SENTINEL_NAME=INTERNET-SENTINEL \
-  TAG_TO_SUPPRESS=internet-dependent \
-  INTERVAL_MS=5000
+# Copy source
+COPY tsconfig.json ./
+COPY src ./src
 
-CMD ["node", "/app/sentinel.mjs"]
+# Install dev deps and build
+RUN npm ci && \
+    npm run build && \
+    npm prune --production
+
+# Production stage
+FROM node:20-alpine
+
+RUN apk add --no-cache tini
+
+WORKDIR /app
+
+# Copy built app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+USER nodejs
+
+EXPOSE 3000
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/sentinel.js"]
