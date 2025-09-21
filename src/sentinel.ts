@@ -107,15 +107,26 @@ class UptimeKumaSentinel {
 
 		this.sentinelId = sentinel.id;
 
+		// Find the group monitor by name
+		const groupMonitor = monitorArray.find(
+			(m) => m.name === this.config.groupToPause && m.type === "group",
+		);
+
+		if (!groupMonitor) {
+			console.error(
+				`[sentinel] group "${this.config.groupToPause}" not found`,
+			);
+			return;
+		}
+
+		// Get all child monitors of this group
 		this.targetIds = monitorArray
-			.filter((m) =>
-				(m.tags || []).some((t) => t.name === this.config.tagToSuppress),
-			)
+			.filter((m) => m.parent === groupMonitor.id)
 			.map((m) => m.id);
 
 		console.log(
 			`[sentinel] watching "${this.config.sentinelName}" (id=${this.sentinelId}); ` +
-				`controlling ${this.targetIds.length} tagged monitors (${this.config.tagToSuppress})`,
+				`controlling ${this.targetIds.length} monitors in group "${this.config.groupToPause}"`,
 		);
 	}
 
@@ -154,7 +165,7 @@ class UptimeKumaSentinel {
 	}
 
 	private async actPause(): Promise<void> {
-		console.log("[sentinel] internet down -> pausing tagged monitors");
+		console.log("[sentinel] internet down -> pausing group monitors");
 
 		for (const id of this.targetIds) {
 			try {
@@ -170,11 +181,11 @@ class UptimeKumaSentinel {
 		}
 
 		this.suppressed = true;
-		console.log("[sentinel] all tagged monitors paused");
+		console.log("[sentinel] all group monitors paused");
 	}
 
 	private async actResume(): Promise<void> {
-		console.log("[sentinel] internet restored -> resuming tagged monitors");
+		console.log("[sentinel] internet restored -> resuming group monitors");
 
 		for (const id of this.targetIds) {
 			try {
@@ -190,7 +201,7 @@ class UptimeKumaSentinel {
 		}
 
 		this.suppressed = false;
-		console.log("[sentinel] all tagged monitors resumed");
+		console.log("[sentinel] all group monitors resumed");
 	}
 
 	private handleSentinelStatus(status: MonitorStatus): void {

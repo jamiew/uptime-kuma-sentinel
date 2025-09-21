@@ -8,7 +8,7 @@ export interface SentinelConfig {
 	readonly kumaUser: string;
 	readonly kumaPass: string;
 	readonly sentinelName: string;
-	readonly tagToSuppress: string;
+	readonly groupToPause: string;
 	readonly intervalMs: number;
 }
 
@@ -25,6 +25,7 @@ export interface Monitor {
 	readonly url?: string;
 	readonly active: boolean;
 	readonly tags?: Tag[];
+	readonly parent?: number | null;
 	readonly status?: MonitorStatus;
 	readonly notificationIDList?: Record<string, boolean>;
 	readonly interval?: number;
@@ -113,7 +114,7 @@ export interface EnvironmentVariables {
 	readonly KUMA_USER: string;
 	readonly KUMA_PASS: string;
 	readonly SENTINEL_NAME: string;
-	readonly TAG_TO_SUPPRESS: string;
+	readonly GROUP_TO_PAUSE: string;
 	readonly INTERVAL_MS: string;
 }
 

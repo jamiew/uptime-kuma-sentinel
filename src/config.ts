@@ -10,11 +10,11 @@ import type { EnvironmentVariables, SentinelConfig } from "./types.js";
 export function loadConfig(): SentinelConfig {
 	const env = process.env as Partial<EnvironmentVariables>;
 
-	const kumaUrl = env.KUMA_URL ?? "http://localhost:3001";
+	const kumaUrl = env.KUMA_URL ?? "http://dubtron.local:3001";
 	const kumaUser = env.KUMA_USER ?? "admin";
 	const kumaPass = env.KUMA_PASS ?? "changeme";
 	const sentinelName = env.SENTINEL_NAME ?? "INTERNET-SENTINEL";
-	const tagToSuppress = env.TAG_TO_SUPPRESS ?? "internet-dependent";
+	const groupToPause = env.GROUP_TO_PAUSE ?? "Sentinel";
 	const intervalMs = Number.parseInt(env.INTERVAL_MS ?? "5000", 10);
 
 	// Validate required configuration
@@ -30,8 +30,8 @@ export function loadConfig(): SentinelConfig {
 	if (!sentinelName) {
 		throw new Error("SENTINEL_NAME is required");
 	}
-	if (!tagToSuppress) {
-		throw new Error("TAG_TO_SUPPRESS is required");
+	if (!groupToPause) {
+		throw new Error("GROUP_TO_PAUSE is required");
 	}
 	if (Number.isNaN(intervalMs) || intervalMs <= 0) {
 		throw new Error("INTERVAL_MS must be a positive number");
@@ -49,7 +49,7 @@ export function loadConfig(): SentinelConfig {
 		kumaUser,
 		kumaPass,
 		sentinelName,
-		tagToSuppress,
+		groupToPause,
 		intervalMs,
 	} as const;
 }
@@ -63,7 +63,7 @@ export function displayConfig(config: SentinelConfig): void {
 	console.log(`  KUMA_USER: ${config.kumaUser}`);
 	console.log(`  KUMA_PASS: ${"*".repeat(config.kumaPass.length)}`);
 	console.log(`  SENTINEL_NAME: ${config.sentinelName}`);
-	console.log(`  TAG_TO_SUPPRESS: ${config.tagToSuppress}`);
+	console.log(`  GROUP_TO_PAUSE: ${config.groupToPause}`);
 	console.log(
 		`  INTERVAL_MS: ${config.intervalMs} (currently unused - real-time via WebSocket)`,
 	);
