@@ -1,0 +1,195 @@
+import { io } from "socket.io-client";
+import { loadConfig, displayConfig } from "./config.js";
+import { MonitorStatus, } from "./types.js";
+class UptimeKumaSentinel {
+    config;
+    socket = null;
+    authenticated = false;
+    suppressed = false;
+    sentinelId = null;
+    targetIds = [];
+    monitors = {};
+    constructor(config) {
+        this.config = config;
+    }
+    async connect() {
+        return new Promise((resolve, reject) => {
+            console.log(`[sentinel] connecting to ${this.config.kumaUrl}`);
+            this.socket = io(this.config.kumaUrl, {
+                transports: ["websocket", "polling"],
+                timeout: 10000,
+            });
+            const timeout = setTimeout(() => {
+                if (!this.authenticated) {
+                    reject(new Error("Connection timeout"));
+                }
+            }, 15000);
+            this.socket.on("connect", () => {
+                console.log("[sentinel] socket connected, attempting login");
+                this.login(resolve, reject);
+            });
+            this.socket.on("connect_error", (error) => {
+                console.error("[sentinel] connection error:", error.message);
+                clearTimeout(timeout);
+                reject(error);
+            });
+            this.socket.on("disconnect", () => {
+                console.log("[sentinel] socket disconnected");
+                this.authenticated = false;
+            });
+            this.socket.on("monitorList", (monitorList) => {
+                console.log("[sentinel] received monitor list");
+                this.monitors = monitorList;
+                this.refreshTargets();
+            });
+            this.socket.on("heartbeat", (heartbeat) => {
+                if (heartbeat.monitorID === this.sentinelId) {
+                    console.log(`[sentinel] heartbeat for sentinel: status=${heartbeat.status}, msg=${heartbeat.msg}`);
+                    this.handleSentinelStatus(heartbeat.status);
+                }
+            });
+        });
+    }
+    login(resolve, reject) {
+        if (!this.socket)
+            return;
+        this.socket.emit("login", {
+            username: this.config.kumaUser,
+            password: this.config.kumaPass,
+        }, (res) => {
+            if (res.ok) {
+                console.log("[sentinel] login successful");
+                this.authenticated = true;
+                resolve();
+            }
+            else {
+                console.error("[sentinel] login failed:", res.msg);
+                reject(new Error(res.msg || "Login failed"));
+            }
+        });
+    }
+    refreshTargets() {
+        const monitorArray = Object.values(this.monitors);
+        const sentinel = monitorArray.find((m) => m.name === this.config.sentinelName);
+        if (!sentinel) {
+            console.error(`[sentinel] sentinel monitor "${this.config.sentinelName}" not found`);
+            return;
+        }
+        this.sentinelId = sentinel.id;
+        this.targetIds = monitorArray
+            .filter((m) => (m.tags || []).some((t) => t.name === this.config.tagToSuppress))
+            .map((m) => m.id);
+        console.log(`[sentinel] watching "${this.config.sentinelName}" (id=${this.sentinelId}); ` +
+            `controlling ${this.targetIds.length} tagged monitors (${this.config.tagToSuppress})`);
+    }
+    async pauseMonitor(monitorId) {
+        return new Promise((resolve, reject) => {
+            if (!this.socket) {
+                reject(new Error("Socket not connected"));
+                return;
+            }
+            this.socket.emit("pauseMonitor", monitorId, (res) => {
+                if (res.ok) {
+                    resolve();
+                }
+                else {
+                    reject(new Error(res.msg || "Failed to pause monitor"));
+                }
+            });
+        });
+    }
+    async resumeMonitor(monitorId) {
+        return new Promise((resolve, reject) => {
+            if (!this.socket) {
+                reject(new Error("Socket not connected"));
+                return;
+            }
+            this.socket.emit("resumeMonitor", monitorId, (res) => {
+                if (res.ok) {
+                    resolve();
+                }
+                else {
+                    reject(new Error(res.msg || "Failed to resume monitor"));
+                }
+            });
+        });
+    }
+    async actPause() {
+        console.log("[sentinel] internet down -> pausing tagged monitors");
+        for (const id of this.targetIds) {
+            try {
+                await this.pauseMonitor(id);
+                console.log(`[sentinel] paused monitor ${id}`);
+            }
+            catch (e) {
+                const error = e;
+                console.error(`[sentinel] failed to pause monitor ${id}:`, error.message);
+            }
+        }
+        this.suppressed = true;
+        console.log("[sentinel] all tagged monitors paused");
+    }
+    async actResume() {
+        console.log("[sentinel] internet restored -> resuming tagged monitors");
+        for (const id of this.targetIds) {
+            try {
+                await this.resumeMonitor(id);
+                console.log(`[sentinel] resumed monitor ${id}`);
+            }
+            catch (e) {
+                const error = e;
+                console.error(`[sentinel] failed to resume monitor ${id}:`, error.message);
+            }
+        }
+        this.suppressed = false;
+        console.log("[sentinel] all tagged monitors resumed");
+    }
+    handleSentinelStatus(status) {
+        const isDown = status === MonitorStatus.DOWN;
+        if (isDown && !this.suppressed) {
+            this.actPause().catch((e) => console.error("[sentinel] pause action failed:", e));
+        }
+        else if (!isDown && this.suppressed) {
+            this.actResume().catch((e) => console.error("[sentinel] resume action failed:", e));
+        }
+    }
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
+        }
+        this.authenticated = false;
+    }
+    async run() {
+        for (;;) {
+            try {
+                await this.connect();
+                console.log("[sentinel] initialization complete, monitoring...");
+                await new Promise(() => { });
+            }
+            catch (e) {
+                const error = e;
+                console.error("[sentinel] bootstrap error, retrying in 5s:", error?.message || error);
+                this.disconnect();
+                await new Promise((r) => setTimeout(r, 5000));
+            }
+        }
+    }
+}
+async function main() {
+    try {
+        const config = loadConfig();
+        displayConfig(config);
+        const sentinel = new UptimeKumaSentinel(config);
+        await sentinel.run();
+    }
+    catch (error) {
+        console.error("[sentinel] Fatal error:", error);
+        process.exit(1);
+    }
+}
+main().catch((error) => {
+    console.error("[sentinel] Unhandled error:", error);
+    process.exit(1);
+});
+//# sourceMappingURL=sentinel.js.map
