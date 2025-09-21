@@ -1,0 +1,27 @@
+{
+  "name": "uptime-kuma-sentinel",
+  "version": "1.0.0",
+  "description": "Automatically pause/resume Uptime Kuma monitors based on internet connectivity",
+  "main": "dist/sentinel.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/sentinel.js",
+    "dev": "tsx watch src/sentinel.ts"
+  },
+  "keywords": [
+    "uptime-kuma",
+    "monitoring",
+    "docker",
+    "typescript"
+  ],
+  "author": "Uptime Kuma Sentinel Contributors",
+  "license": "MIT",
+  "dependencies": {
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
