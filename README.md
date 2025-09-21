@@ -4,6 +4,8 @@ Stops Uptime Kuma from freaking out when your internet dies. Built for spotty ho
 
 **⚠️ WIP - Prone to breakage. PRs welcome (mention `@claude` for AI reviews).**
 
+[![CI](https://github.com/jamiew/uptime-kuma-sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/jamiew/uptime-kuma-sentinel/actions/workflows/ci.yml)
+
 ## The Problem
 
 You're monitoring local services AND external sites. Internet drops at 3am. Suddenly you're getting 50 alerts about "Google is down" when really it's just your crappy ISP. Meanwhile your local services are fine but you can't tell through all the noise.
