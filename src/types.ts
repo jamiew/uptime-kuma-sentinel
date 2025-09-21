@@ -12,13 +12,19 @@ export interface SentinelConfig {
   readonly intervalMs: number;
 }
 
+export interface Tag {
+  readonly id: number;
+  readonly name: string;
+  readonly color: string;
+}
+
 export interface Monitor {
   readonly id: number;
   readonly name: string;
   readonly type: string;
   readonly url?: string;
   readonly active: boolean;
-  readonly tags?: MonitorTag[];
+  readonly tags?: Tag[];
   readonly status?: MonitorStatus;
   readonly notificationIDList?: Record<string, boolean>;
   readonly interval?: number;
@@ -31,26 +37,32 @@ export interface Monitor {
   readonly conditions?: string;
 }
 
-export interface MonitorTag {
-  readonly tag_id: number;
-  readonly monitor_id: number;
-  readonly value?: string | null;
-  readonly name: string;
-  readonly color: string;
-}
-
-export interface Heartbeat {
+export interface HeartbeatData {
   readonly monitorID: number;
   readonly status: MonitorStatus;
-  readonly time: string; // ISO 8601 UTC timestamp
-  readonly msg: string;
-  readonly ping?: number | null; // Response time in ms
-  readonly important: boolean; // Was this heartbeat a status change?
-  readonly duration: number; // Seconds since last heartbeat
-  readonly localDateTime: string; // Formatted time in server timezone
-  readonly timezone: string; // Server timezone name
-  readonly retries: number; // Number of retries attempted
-  readonly downCount: number; // Consecutive down count
+  readonly time: string;
+  readonly msg?: string;
+  readonly ping?: number | null;
+  readonly important: boolean;
+  readonly duration?: number;
+  readonly retries?: number;
+  readonly downCount?: number;
+  readonly localDateTime?: string;
+  readonly timezone?: string;
+}
+
+export interface ApiResponse {
+  readonly ok: boolean;
+  readonly msg?: string;
+}
+
+export interface LoginResponse extends ApiResponse {
+  readonly token?: string;
+  readonly user?: {
+    id: number;
+    username: string;
+    email?: string;
+  };
 }
 
 export interface SocketResponse<T = unknown> {

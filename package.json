@@ -1,27 +1,36 @@
 {
   "name": "uptime-kuma-sentinel",
   "version": "1.0.0",
-  "description": "Automatically pause/resume Uptime Kuma monitors based on internet connectivity",
+  "description": "Auto-pause/resume Uptime Kuma monitors based on connectivity",
+  "type": "module",
   "main": "dist/sentinel.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/sentinel.js",
-    "dev": "tsx watch src/sentinel.ts"
+    "dev": "tsx watch src/sentinel.ts",
+    "test": "vitest",
+    "test:ci": "vitest run --coverage",
+    "format": "biome format --write .",
+    "lint": "biome lint --write .",
+    "check": "biome check --write .",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": [
-    "uptime-kuma",
-    "monitoring",
-    "docker",
-    "typescript"
-  ],
-  "author": "Uptime Kuma Sentinel Contributors",
+  "keywords": ["uptime-kuma", "monitoring", "docker", "typescript"],
+  "author": "Uptime Kuma Sentinel",
   "license": "MIT",
   "dependencies": {
     "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
-    "tsx": "^4.16.0",
-    "typescript": "^5.5.0"
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.7.5",
+    "@vitest/coverage-v8": "^2.1.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
