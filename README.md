@@ -1,10 +1,14 @@
 # uptime-kuma-sentinel 🛸
 
-your uptime kuma's bodyguard. automatically pauses monitors when the internet dies so you don't get flooded with false alerts at 3am.
+stops uptime kuma from freaking out when your internet dies. built for spotty home connections.
 
-## what it does
+## the problem
 
-watches a sentinel monitor (like cloudflare dns). when it drops, pauses all your tagged monitors. when it's back, unpauses them. simple as that.
+you're monitoring local services AND external sites. internet drops at 3am. suddenly you're getting 50 alerts about "google is down" when really it's just your crappy ISP. meanwhile your local services are fine but you can't tell through all the noise.
+
+## the solution
+
+this watches a sentinel monitor (like cloudflare dns). when internet dies, it auto-pauses all monitors tagged "internet-dependent". when internet's back, it resumes them. your local service monitors keep running. no false alarms. sleep preserved.
 
 ## quick setup
 
@@ -27,12 +31,22 @@ docker compose up -d
 ## config
 
 ```bash
-KUMA_URL=http://localhost:3001      # kuma instance
+KUMA_URL=http://localhost:3001      # your kuma instance
 KUMA_USER=admin                     # username
 KUMA_PASS=changeme                  # password
-SENTINEL_NAME=INTERNET-SENTINEL     # monitor to watch
-TAG_TO_SUPPRESS=internet-dependent  # tag for dependent monitors
+SENTINEL_NAME=INTERNET-SENTINEL     # monitor that checks internet
+TAG_TO_SUPPRESS=internet-dependent  # tag for external monitors
 ```
+
+## how to use
+
+1. create a sentinel monitor in kuma that checks something super reliable (1.1.1.1:53, google.com, etc)
+2. tag all your external/internet monitors with "internet-dependent"
+3. run this sentinel
+4. when internet dies, tagged monitors pause automatically
+5. when internet returns, they resume
+
+local services stay monitored. external services don't false alarm. everyone wins.
 
 ## dev
 
@@ -42,17 +56,9 @@ npm run check # lint/format
 npm run build # compile ts
 ```
 
-## ci/cd
+## docker
 
-github actions handles everything:
-- tests & builds on PRs
-- multi-arch docker images
-- auto-publishes to ghcr.io
-- claude reviews your code
-
-## how it works
-
-connects via websocket to kuma's internal api. listens for heartbeats from sentinel. pauses/resumes monitors based on status. that's it.
+github actions builds multi-arch images and publishes to ghcr.io automatically.
 
 ## license
 
