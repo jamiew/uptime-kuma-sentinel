@@ -4,20 +4,22 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm@9
 
 # Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+RUN pnpm install --frozen-lockfile --prod
 
 # Copy source
 COPY tsconfig.json ./
 COPY src ./src
 
-# Install dev deps and build
-RUN npm ci && \
-    npm run build && \
-    npm prune --production
+# Install all deps and build
+RUN pnpm install --frozen-lockfile && \
+    pnpm run build && \
+    pnpm prune --prod
 
 # Production stage
 FROM node:20-alpine
