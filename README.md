@@ -31,8 +31,8 @@ docker run -d \
 ```bash
 git clone https://github.com/jamiew/uptime-kuma-sentinel
 cd uptime-kuma-sentinel
-npm install && npm run build
-npm start
+pnpm install && pnpm run build
+pnpm start
 ```
 
 ## Setup
@@ -55,9 +55,9 @@ TAG_TO_SUPPRESS=internet-dependent  # Tag for external monitors
 ## Dev
 
 ```bash
-npm test      # Tests
-npm run check # Lint/format
-npm run build # Compile
+pnpm test      # Tests
+pnpm run check # Lint/format
+pnpm run build # Compile
 ```
 
 ## License
