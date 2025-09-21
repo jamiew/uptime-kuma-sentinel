@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { io } from "socket.io-client";
 import type { Socket } from "socket.io-client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("socket.io-client", () => ({
 	io: vi.fn(),
@@ -49,9 +49,9 @@ describe("UptimeKumaSentinel", () => {
 		});
 
 		const connectPromise = sentinel.connect();
-		listeners["connect"]?.();
+		listeners.connect?.();
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
-			(event, data, callback) => {
+			(event, _data, callback) => {
 				if (event === "login") {
 					callback({ ok: true });
 				}
@@ -78,10 +78,10 @@ describe("UptimeKumaSentinel", () => {
 		});
 
 		const connectPromise = sentinel.connect();
-		listeners["connect"]?.();
+		listeners.connect?.();
 
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
-			(event, data, callback) => {
+			(event, _data, callback) => {
 				if (event === "login") {
 					callback({ ok: true });
 				}
@@ -108,10 +108,10 @@ describe("UptimeKumaSentinel", () => {
 		});
 
 		const connectPromise = sentinel.connect();
-		listeners["connect"]?.();
+		listeners.connect?.();
 
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
-			(event, data, callback) => {
+			(event, _data, callback) => {
 				if (event === "login") {
 					callback({ ok: false, msg: "Invalid credentials" });
 				}
@@ -134,7 +134,7 @@ describe("UptimeKumaSentinel", () => {
 
 		const connectPromise = sentinel.connect();
 		const error = new Error("Connection failed");
-		listeners["connect_error"]?.(error);
+		listeners.connect_error?.(error);
 
 		await expect(connectPromise).rejects.toThrow("Connection failed");
 	});
@@ -151,9 +151,9 @@ describe("UptimeKumaSentinel", () => {
 		});
 
 		const connectPromise = sentinel.connect();
-		listeners["connect"]?.();
+		listeners.connect?.();
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
-			(event, data, callback) => {
+			(event, _data, callback) => {
 				if (event === "login") {
 					callback({ ok: true });
 				}
