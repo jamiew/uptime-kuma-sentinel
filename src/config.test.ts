@@ -89,9 +89,7 @@ describe("Config", () => {
 			expect(consoleSpy).toHaveBeenCalledWith(
 				"  SENTINEL_NAME: INTERNET-SENTINEL",
 			);
-			expect(consoleSpy).toHaveBeenCalledWith(
-				"  GROUP_TO_PAUSE: Sentinel",
-			);
+			expect(consoleSpy).toHaveBeenCalledWith("  GROUP_TO_PAUSE: Sentinel");
 			expect(consoleSpy).toHaveBeenCalledWith(
 				"  INTERVAL_MS: 5000 (currently unused - real-time via WebSocket)",
 			);
