@@ -10,7 +10,7 @@ import type { EnvironmentVariables, SentinelConfig } from "./types.js";
 export function loadConfig(): SentinelConfig {
 	const env = process.env as Partial<EnvironmentVariables>;
 
-	const kumaUrl = env.KUMA_URL ?? "http://dubtron.local:3001";
+	const kumaUrl = env.KUMA_URL ?? "http://localhost:3001";
 	const kumaUser = env.KUMA_USER ?? "admin";
 	const kumaPass = env.KUMA_PASS ?? "changeme";
 	const sentinelName = env.SENTINEL_NAME ?? "INTERNET-SENTINEL";

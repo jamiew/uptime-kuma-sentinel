@@ -17,7 +17,7 @@ describe("Config", () => {
 		it("should load default configuration", () => {
 			const config = loadConfig();
 			expect(config).toEqual({
-				kumaUrl: "http://dubtron.local:3001",
+				kumaUrl: "http://localhost:3001",
 				kumaUser: "admin",
 				kumaPass: "changeme",
 				sentinelName: "INTERNET-SENTINEL",
