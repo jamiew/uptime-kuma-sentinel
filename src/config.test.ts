@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { displayConfig, loadConfig } from "./config.js";
 
 describe("Config", () => {
@@ -17,11 +17,11 @@ describe("Config", () => {
 		it("should load default configuration", () => {
 			const config = loadConfig();
 			expect(config).toEqual({
-				kumaUrl: "http://localhost:3001",
+				kumaUrl: "http://dubtron.local:3001",
 				kumaUser: "admin",
 				kumaPass: "changeme",
 				sentinelName: "INTERNET-SENTINEL",
-				tagToSuppress: "internet-dependent",
+				groupToPause: "Sentinel",
 				intervalMs: 5000,
 			});
 		});
@@ -31,7 +31,7 @@ describe("Config", () => {
 			process.env.KUMA_USER = "testuser";
 			process.env.KUMA_PASS = "testpass";
 			process.env.SENTINEL_NAME = "TEST-SENTINEL";
-			process.env.TAG_TO_SUPPRESS = "test-tag";
+			process.env.GROUP_TO_PAUSE = "test-group";
 			process.env.INTERVAL_MS = "10000";
 
 			const config = loadConfig();
@@ -40,7 +40,7 @@ describe("Config", () => {
 				kumaUser: "testuser",
 				kumaPass: "testpass",
 				sentinelName: "TEST-SENTINEL",
-				tagToSuppress: "test-tag",
+				groupToPause: "test-group",
 				intervalMs: 10000,
 			});
 		});
@@ -74,7 +74,7 @@ describe("Config", () => {
 				kumaUser: "admin",
 				kumaPass: "secretpass",
 				sentinelName: "INTERNET-SENTINEL",
-				tagToSuppress: "internet-dependent",
+				groupToPause: "Sentinel",
 				intervalMs: 5000,
 			};
 
@@ -90,7 +90,7 @@ describe("Config", () => {
 				"  SENTINEL_NAME: INTERNET-SENTINEL",
 			);
 			expect(consoleSpy).toHaveBeenCalledWith(
-				"  TAG_TO_SUPPRESS: internet-dependent",
+				"  GROUP_TO_PAUSE: Sentinel",
 			);
 			expect(consoleSpy).toHaveBeenCalledWith(
 				"  INTERVAL_MS: 5000 (currently unused - real-time via WebSocket)",
