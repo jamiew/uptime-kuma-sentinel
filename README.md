@@ -1,8 +1,10 @@
 # uptime-kuma-sentinel 🛸
 
-Stops Uptime Kuma from freaking out when your internet dies. Built for spotty home connections.
+Automation for pausing and resuming [Uptime Kuma](https://github.com/louislam/uptime-kuma) alerts the monitor's internet connection dies. Built for monitoring uptime from servres with spotty home connections.
 
-**⚠️ WIP - Prone to breakage. PRs welcome (mention `@claude` for AI reviews).**
+The internal services are running OK, but the monitor things the external ones are all down! But they're not. my internet is down.
+
+**⚠️ WIP - PRs welcome (including via `@claude`)*
 
 [![CI](https://github.com/jamiew/uptime-kuma-sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/jamiew/uptime-kuma-sentinel/actions/workflows/ci.yml)
 
