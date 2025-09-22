@@ -22,7 +22,7 @@ class UptimeKumaSentinel {
 	}
 
 	// Utility to promisify socket.emit calls
-	private emitAsync(event: string, ...args: any[]): Promise<ApiResponse> {
+	private emitAsync(event: string, ...args: unknown[]): Promise<ApiResponse> {
 		return new Promise((resolve, reject) => {
 			if (!this.socket) {
 				reject(new Error("Socket not connected"));
@@ -107,13 +107,10 @@ class UptimeKumaSentinel {
 
 	private async login(): Promise<void> {
 		try {
-			await this.emitAsync(
-				"login",
-				{
-					username: this.config.kumaUser,
-					password: this.config.kumaPass,
-				}
-			);
+			await this.emitAsync("login", {
+				username: this.config.kumaUser,
+				password: this.config.kumaPass,
+			});
 
 			console.log("[sentinel] login successful");
 			this.authenticated = true;
@@ -144,9 +141,7 @@ class UptimeKumaSentinel {
 		);
 
 		if (!groupMonitor) {
-			console.error(
-				`[sentinel] group "${this.config.groupToPause}" not found`,
-			);
+			console.error(`[sentinel] group "${this.config.groupToPause}" not found`);
 			return;
 		}
 
