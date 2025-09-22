@@ -12,7 +12,7 @@ vi.mock("./config.js", () => ({
 		kumaUser: "admin",
 		kumaPass: "changeme",
 		sentinelName: "INTERNET-SENTINEL",
-		tagToSuppress: "internet-dependent",
+		groupToPause: "Sentinel",
 		intervalMs: 5000,
 	})),
 	displayConfig: vi.fn(),
@@ -39,17 +39,8 @@ describe("UptimeKumaSentinel", () => {
 
 	it("should create a socket connection with correct options", async () => {
 		const { UptimeKumaSentinel } = await import("./sentinel.js");
-		const sentinel = new UptimeKumaSentinel({
-			kumaUrl: "http://localhost:3001",
-			kumaUser: "admin",
-			kumaPass: "changeme",
-			sentinelName: "INTERNET-SENTINEL",
-			tagToSuppress: "internet-dependent",
-			intervalMs: 5000,
-		});
 
-		const connectPromise = sentinel.connect();
-		listeners.connect?.();
+		// Set up emit mock before creating sentinel
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
 			(event, _data, callback) => {
 				if (event === "login") {
@@ -57,6 +48,20 @@ describe("UptimeKumaSentinel", () => {
 				}
 			},
 		);
+
+		const sentinel = new UptimeKumaSentinel({
+			kumaUrl: "http://localhost:3001",
+			kumaUser: "admin",
+			kumaPass: "changeme",
+			sentinelName: "INTERNET-SENTINEL",
+			groupToPause: "Sentinel",
+			intervalMs: 5000,
+		});
+
+		const connectPromise = sentinel.connect();
+
+		// Trigger connect event
+		listeners.connect?.();
 
 		await connectPromise;
 
@@ -68,18 +73,8 @@ describe("UptimeKumaSentinel", () => {
 
 	it("should handle login success", async () => {
 		const { UptimeKumaSentinel } = await import("./sentinel.js");
-		const sentinel = new UptimeKumaSentinel({
-			kumaUrl: "http://localhost:3001",
-			kumaUser: "admin",
-			kumaPass: "changeme",
-			sentinelName: "INTERNET-SENTINEL",
-			tagToSuppress: "internet-dependent",
-			intervalMs: 5000,
-		});
 
-		const connectPromise = sentinel.connect();
-		listeners.connect?.();
-
+		// Set up emit mock before creating sentinel
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
 			(event, _data, callback) => {
 				if (event === "login") {
@@ -87,6 +82,18 @@ describe("UptimeKumaSentinel", () => {
 				}
 			},
 		);
+
+		const sentinel = new UptimeKumaSentinel({
+			kumaUrl: "http://localhost:3001",
+			kumaUser: "admin",
+			kumaPass: "changeme",
+			sentinelName: "INTERNET-SENTINEL",
+			groupToPause: "Sentinel",
+			intervalMs: 5000,
+		});
+
+		const connectPromise = sentinel.connect();
+		listeners.connect?.();
 
 		await expect(connectPromise).resolves.toBeUndefined();
 		expect(mockSocket.emit).toHaveBeenCalledWith(
@@ -98,18 +105,8 @@ describe("UptimeKumaSentinel", () => {
 
 	it("should handle login failure", async () => {
 		const { UptimeKumaSentinel } = await import("./sentinel.js");
-		const sentinel = new UptimeKumaSentinel({
-			kumaUrl: "http://localhost:3001",
-			kumaUser: "admin",
-			kumaPass: "changeme",
-			sentinelName: "INTERNET-SENTINEL",
-			tagToSuppress: "internet-dependent",
-			intervalMs: 5000,
-		});
 
-		const connectPromise = sentinel.connect();
-		listeners.connect?.();
-
+		// Set up emit mock before creating sentinel
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
 			(event, _data, callback) => {
 				if (event === "login") {
@@ -118,17 +115,30 @@ describe("UptimeKumaSentinel", () => {
 			},
 		);
 
-		await expect(connectPromise).rejects.toThrow("Invalid credentials");
-	});
-
-	it("should handle connection error", async () => {
-		const { UptimeKumaSentinel } = await import("./sentinel.js");
 		const sentinel = new UptimeKumaSentinel({
 			kumaUrl: "http://localhost:3001",
 			kumaUser: "admin",
 			kumaPass: "changeme",
 			sentinelName: "INTERNET-SENTINEL",
-			tagToSuppress: "internet-dependent",
+			groupToPause: "Sentinel",
+			intervalMs: 5000,
+		});
+
+		const connectPromise = sentinel.connect();
+		listeners.connect?.();
+
+		await expect(connectPromise).rejects.toThrow("Invalid credentials");
+	});
+
+	it("should handle connection error", async () => {
+		const { UptimeKumaSentinel } = await import("./sentinel.js");
+
+		const sentinel = new UptimeKumaSentinel({
+			kumaUrl: "http://localhost:3001",
+			kumaUser: "admin",
+			kumaPass: "changeme",
+			sentinelName: "INTERNET-SENTINEL",
+			groupToPause: "Sentinel",
 			intervalMs: 5000,
 		});
 
@@ -141,17 +151,8 @@ describe("UptimeKumaSentinel", () => {
 
 	it("should disconnect properly", async () => {
 		const { UptimeKumaSentinel } = await import("./sentinel.js");
-		const sentinel = new UptimeKumaSentinel({
-			kumaUrl: "http://localhost:3001",
-			kumaUser: "admin",
-			kumaPass: "changeme",
-			sentinelName: "INTERNET-SENTINEL",
-			tagToSuppress: "internet-dependent",
-			intervalMs: 5000,
-		});
 
-		const connectPromise = sentinel.connect();
-		listeners.connect?.();
+		// Set up emit mock before creating sentinel
 		(mockSocket.emit as ReturnType<typeof vi.fn>).mockImplementation(
 			(event, _data, callback) => {
 				if (event === "login") {
@@ -159,6 +160,18 @@ describe("UptimeKumaSentinel", () => {
 				}
 			},
 		);
+
+		const sentinel = new UptimeKumaSentinel({
+			kumaUrl: "http://localhost:3001",
+			kumaUser: "admin",
+			kumaPass: "changeme",
+			sentinelName: "INTERNET-SENTINEL",
+			groupToPause: "Sentinel",
+			intervalMs: 5000,
+		});
+
+		const connectPromise = sentinel.connect();
+		listeners.connect?.();
 
 		await connectPromise;
 		sentinel.disconnect();

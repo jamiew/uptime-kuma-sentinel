@@ -260,6 +260,9 @@ async function main(): Promise<void> {
 	}
 }
 
+// Export the class for testing
+export { UptimeKumaSentinel };
+
 main().catch((error) => {
 	console.error("[sentinel] Unhandled error:", error);
 	process.exit(1);
