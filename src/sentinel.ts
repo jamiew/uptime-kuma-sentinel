@@ -3,7 +3,6 @@ import { displayConfig, loadConfig } from "./config.js";
 import {
 	type ApiResponse,
 	type HeartbeatData,
-	type LoginResponse,
 	type Monitor,
 	MonitorStatus,
 	type SentinelConfig,
@@ -22,14 +21,30 @@ class UptimeKumaSentinel {
 		this.config = config;
 	}
 
-	async connect(): Promise<void> {
+	// Utility to promisify socket.emit calls
+	private emitAsync(event: string, ...args: any[]): Promise<ApiResponse> {
 		return new Promise((resolve, reject) => {
-			console.log(`[sentinel] connecting to ${this.config.kumaUrl}`);
-
-			this.socket = io(this.config.kumaUrl, {
-				transports: ["websocket", "polling"],
-				timeout: 10000,
+			if (!this.socket) {
+				reject(new Error("Socket not connected"));
+				return;
+			}
+			this.socket.emit(event, ...args, (res: ApiResponse) => {
+				if (res.ok) {
+					resolve(res);
+				} else {
+					reject(new Error(res.msg || `Failed to ${event}`));
+				}
 			});
+		});
+	}
+
+	// Utility to wait for socket connection
+	private waitForConnection(): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (!this.socket) {
+				reject(new Error("Socket not initialized"));
+				return;
+			}
 
 			const timeout = setTimeout(() => {
 				if (!this.authenticated) {
@@ -37,9 +52,16 @@ class UptimeKumaSentinel {
 				}
 			}, 15000);
 
-			this.socket.on("connect", () => {
+			this.socket.on("connect", async () => {
 				console.log("[sentinel] socket connected, attempting login");
-				this.login(resolve, reject);
+				try {
+					await this.login();
+					clearTimeout(timeout);
+					resolve();
+				} catch (error) {
+					clearTimeout(timeout);
+					reject(error);
+				}
 			});
 
 			this.socket.on("connect_error", (error: Error) => {
@@ -47,49 +69,58 @@ class UptimeKumaSentinel {
 				clearTimeout(timeout);
 				reject(error);
 			});
-
-			this.socket.on("disconnect", () => {
-				console.log("[sentinel] socket disconnected");
-				this.authenticated = false;
-			});
-
-			this.socket.on("monitorList", (monitorList: Record<string, Monitor>) => {
-				console.log("[sentinel] received monitor list");
-				this.monitors = monitorList;
-				this.refreshTargets();
-			});
-
-			this.socket.on("heartbeat", (heartbeat: HeartbeatData) => {
-				if (heartbeat.monitorID === this.sentinelId) {
-					console.log(
-						`[sentinel] heartbeat for sentinel: status=${heartbeat.status}, msg=${heartbeat.msg}`,
-					);
-					this.handleSentinelStatus(heartbeat.status);
-				}
-			});
 		});
 	}
 
-	private login(resolve: () => void, reject: (error: Error) => void): void {
-		if (!this.socket) return;
+	async connect(): Promise<void> {
+		console.log(`[sentinel] connecting to ${this.config.kumaUrl}`);
 
-		this.socket.emit(
-			"login",
-			{
-				username: this.config.kumaUser,
-				password: this.config.kumaPass,
-			},
-			(res: LoginResponse) => {
-				if (res.ok) {
-					console.log("[sentinel] login successful");
-					this.authenticated = true;
-					resolve();
-				} else {
-					console.error("[sentinel] login failed:", res.msg);
-					reject(new Error(res.msg || "Login failed"));
+		this.socket = io(this.config.kumaUrl, {
+			transports: ["websocket", "polling"],
+			timeout: 10000,
+		});
+
+		// Set up persistent event handlers
+		this.socket.on("disconnect", () => {
+			console.log("[sentinel] socket disconnected");
+			this.authenticated = false;
+		});
+
+		this.socket.on("monitorList", (monitorList: Record<string, Monitor>) => {
+			console.log("[sentinel] received monitor list");
+			this.monitors = monitorList;
+			this.refreshTargets();
+		});
+
+		this.socket.on("heartbeat", (heartbeat: HeartbeatData) => {
+			if (heartbeat.monitorID === this.sentinelId) {
+				console.log(
+					`[sentinel] heartbeat for sentinel: status=${heartbeat.status}, msg=${heartbeat.msg}`,
+				);
+				this.handleSentinelStatus(heartbeat.status);
+			}
+		});
+
+		// Wait for connection and login
+		await this.waitForConnection();
+	}
+
+	private async login(): Promise<void> {
+		try {
+			await this.emitAsync(
+				"login",
+				{
+					username: this.config.kumaUser,
+					password: this.config.kumaPass,
 				}
-			},
-		);
+			);
+
+			console.log("[sentinel] login successful");
+			this.authenticated = true;
+		} catch (error) {
+			console.error("[sentinel] login failed:", (error as Error).message);
+			throw error;
+		}
 	}
 
 	private refreshTargets(): void {
@@ -131,37 +162,11 @@ class UptimeKumaSentinel {
 	}
 
 	private async pauseMonitor(monitorId: number): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (!this.socket) {
-				reject(new Error("Socket not connected"));
-				return;
-			}
-
-			this.socket.emit("pauseMonitor", monitorId, (res: ApiResponse) => {
-				if (res.ok) {
-					resolve();
-				} else {
-					reject(new Error(res.msg || "Failed to pause monitor"));
-				}
-			});
-		});
+		await this.emitAsync("pauseMonitor", monitorId);
 	}
 
 	private async resumeMonitor(monitorId: number): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (!this.socket) {
-				reject(new Error("Socket not connected"));
-				return;
-			}
-
-			this.socket.emit("resumeMonitor", monitorId, (res: ApiResponse) => {
-				if (res.ok) {
-					resolve();
-				} else {
-					reject(new Error(res.msg || "Failed to resume monitor"));
-				}
-			});
-		});
+		await this.emitAsync("resumeMonitor", monitorId);
 	}
 
 	private async actPause(): Promise<void> {
