@@ -1,0 +1,490 @@
+name: Deploy GitHub Pages
+
+on:
+  # Trigger on pushes to main
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'package.json'
+      - 'website/**'
+      - '.github/workflows/github-pages.yml'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Gather repository metadata
+        id: meta
+        run: |
+          # Get package.json data
+          echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "DESCRIPTION=$(node -p "require('./package.json').description")" >> $GITHUB_OUTPUT
+
+          # Get GitHub stats
+          echo "STARS=$(gh api repos/${{ github.repository }} --jq .stargazers_count)" >> $GITHUB_OUTPUT
+          echo "FORKS=$(gh api repos/${{ github.repository }} --jq .forks_count)" >> $GITHUB_OUTPUT
+          echo "ISSUES=$(gh api repos/${{ github.repository }} --jq .open_issues_count)" >> $GITHUB_OUTPUT
+
+          # Get latest release
+          echo "LATEST_RELEASE=$(gh release view --json tagName --jq .tagName 2>/dev/null || echo 'v${{ steps.meta.outputs.VERSION }}')" >> $GITHUB_OUTPUT
+
+          # Get commit info
+          echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "COMMIT_MSG=$(git log -1 --pretty=%B | head -1)" >> $GITHUB_OUTPUT
+          echo "COMMIT_DATE=$(git log -1 --format=%cd --date=format:'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+          # NPM stats (if published)
+          echo "Fetching NPM stats..."
+          NPM_DOWNLOADS=$(curl -s https://api.npmjs.org/downloads/point/last-week/uptime-kuma-sentinel | jq -r .downloads 2>/dev/null || echo "0")
+          echo "NPM_DOWNLOADS=$NPM_DOWNLOADS" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Generate website from template
+        run: |
+          # Create website directory if it doesn't exist
+          mkdir -p website
+
+          # Generate the website using metadata
+          cat > website/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <meta name="description" content="${{ steps.meta.outputs.DESCRIPTION }}">
+              <meta property="og:title" content="uptime-kuma-sentinel">
+              <meta property="og:description" content="${{ steps.meta.outputs.DESCRIPTION }}">
+              <meta property="og:image" content="https://raw.githubusercontent.com/${{ github.repository }}/main/.github/banner.png">
+              <meta name="twitter:card" content="summary_large_image">
+              <title>uptime-kuma-sentinel 🛸 - Never Get False Alerts Again</title>
+
+              <style>
+                  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+
+                  :root {
+                      --neon-green: #00ff88;
+                      --neon-pink: #ff0099;
+                      --neon-blue: #00ddff;
+                      --warning: #ffaa00;
+                      --bg: #0a0a0a;
+                      --surface: #1a1a1a;
+                      --text: #ffffff;
+                      --text-dim: #999999;
+                      --border: #333333;
+                  }
+
+                  * {
+                      margin: 0;
+                      padding: 0;
+                      box-sizing: border-box;
+                  }
+
+                  body {
+                      font-family: 'Inter', sans-serif;
+                      background: var(--bg);
+                      color: var(--text);
+                      line-height: 1.6;
+                      overflow-x: hidden;
+                  }
+
+                  /* Animated background */
+                  .bg-animation {
+                      position: fixed;
+                      width: 100%;
+                      height: 100%;
+                      top: 0;
+                      left: 0;
+                      z-index: -1;
+                      opacity: 0.3;
+                      background:
+                          radial-gradient(circle at 20% 50%, var(--neon-green) 0%, transparent 50%),
+                          radial-gradient(circle at 80% 50%, var(--neon-pink) 0%, transparent 50%),
+                          radial-gradient(circle at 50% 100%, var(--neon-blue) 0%, transparent 50%);
+                      filter: blur(100px);
+                      animation: pulse 10s ease-in-out infinite;
+                  }
+
+                  @keyframes pulse {
+                      0%, 100% { transform: scale(1) rotate(0deg); }
+                      50% { transform: scale(1.1) rotate(5deg); }
+                  }
+
+                  .container {
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 2rem;
+                  }
+
+                  /* Header */
+                  header {
+                      text-align: center;
+                      padding: 4rem 2rem 2rem;
+                      position: relative;
+                  }
+
+                  .logo {
+                      font-size: clamp(3rem, 8vw, 5rem);
+                      font-weight: 700;
+                      font-family: 'JetBrains Mono', monospace;
+                      background: linear-gradient(135deg, var(--neon-green) 0%, var(--neon-pink) 100%);
+                      -webkit-background-clip: text;
+                      -webkit-text-fill-color: transparent;
+                      background-clip: text;
+                      margin-bottom: 1rem;
+                      animation: glow 2s ease-in-out infinite;
+                  }
+
+                  @keyframes glow {
+                      0%, 100% { filter: brightness(1); }
+                      50% { filter: brightness(1.2); }
+                  }
+
+                  .tagline {
+                      font-size: 1.25rem;
+                      color: var(--text-dim);
+                      margin-bottom: 2rem;
+                  }
+
+                  /* Stats bar */
+                  .stats {
+                      display: flex;
+                      justify-content: center;
+                      gap: 2rem;
+                      flex-wrap: wrap;
+                      margin-bottom: 3rem;
+                  }
+
+                  .stat {
+                      display: flex;
+                      align-items: center;
+                      gap: 0.5rem;
+                      padding: 0.5rem 1rem;
+                      background: var(--surface);
+                      border: 1px solid var(--border);
+                      border-radius: 2rem;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 0.875rem;
+                  }
+
+                  .stat-label {
+                      color: var(--text-dim);
+                  }
+
+                  .stat-value {
+                      color: var(--neon-green);
+                      font-weight: 700;
+                  }
+
+                  /* Buttons */
+                  .buttons {
+                      display: flex;
+                      justify-content: center;
+                      gap: 1rem;
+                      flex-wrap: wrap;
+                      margin: 3rem 0;
+                  }
+
+                  .btn {
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 0.5rem;
+                      padding: 1rem 2rem;
+                      border-radius: 0.5rem;
+                      font-weight: 600;
+                      text-decoration: none;
+                      transition: all 0.3s;
+                      border: 2px solid transparent;
+                  }
+
+                  .btn-primary {
+                      background: linear-gradient(135deg, var(--neon-green), var(--neon-blue));
+                      color: var(--bg);
+                  }
+
+                  .btn-primary:hover {
+                      transform: translateY(-2px);
+                      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+                  }
+
+                  .btn-secondary {
+                      background: var(--surface);
+                      color: var(--text);
+                      border-color: var(--border);
+                  }
+
+                  .btn-secondary:hover {
+                      border-color: var(--neon-pink);
+                      box-shadow: 0 0 20px rgba(255, 0, 153, 0.2);
+                  }
+
+                  /* Feature cards */
+                  .features {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                      gap: 2rem;
+                      margin: 4rem 0;
+                  }
+
+                  .feature {
+                      background: var(--surface);
+                      border: 1px solid var(--border);
+                      border-radius: 1rem;
+                      padding: 2rem;
+                      transition: all 0.3s;
+                  }
+
+                  .feature:hover {
+                      border-color: var(--neon-green);
+                      transform: translateY(-5px);
+                      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.1);
+                  }
+
+                  .feature-icon {
+                      font-size: 3rem;
+                      margin-bottom: 1rem;
+                  }
+
+                  .feature h3 {
+                      color: var(--neon-green);
+                      margin-bottom: 0.5rem;
+                      font-family: 'JetBrains Mono', monospace;
+                  }
+
+                  /* Code blocks */
+                  .code-block {
+                      background: var(--surface);
+                      border: 1px solid var(--border);
+                      border-radius: 0.5rem;
+                      padding: 1.5rem;
+                      margin: 2rem 0;
+                      overflow-x: auto;
+                  }
+
+                  .code-block pre {
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 0.875rem;
+                      color: var(--neon-green);
+                  }
+
+                  /* Footer */
+                  footer {
+                      text-align: center;
+                      padding: 3rem 2rem;
+                      margin-top: 5rem;
+                      border-top: 1px solid var(--border);
+                      color: var(--text-dim);
+                  }
+
+                  footer a {
+                      color: var(--neon-green);
+                      text-decoration: none;
+                  }
+
+                  footer a:hover {
+                      text-decoration: underline;
+                  }
+
+                  /* Responsive */
+                  @media (max-width: 768px) {
+                      .stats {
+                          gap: 1rem;
+                      }
+
+                      .buttons {
+                          flex-direction: column;
+                      }
+
+                      .btn {
+                          width: 100%;
+                          justify-content: center;
+                      }
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="bg-animation"></div>
+
+              <header>
+                  <div class="container">
+                      <h1 class="logo">uptime-kuma-sentinel 🛸</h1>
+                      <p class="tagline">Stop getting false alerts when your internet drops</p>
+
+                      <div class="stats">
+                          <div class="stat">
+                              <span class="stat-label">version</span>
+                              <span class="stat-value">v${{ steps.meta.outputs.VERSION }}</span>
+                          </div>
+                          <div class="stat">
+                              <span class="stat-label">stars</span>
+                              <span class="stat-value">${{ steps.meta.outputs.STARS }}</span>
+                          </div>
+                          <div class="stat">
+                              <span class="stat-label">forks</span>
+                              <span class="stat-value">${{ steps.meta.outputs.FORKS }}</span>
+                          </div>
+                          <div class="stat">
+                              <span class="stat-label">npm weekly</span>
+                              <span class="stat-value">${{ steps.meta.outputs.NPM_DOWNLOADS }}</span>
+                          </div>
+                      </div>
+
+                      <div class="buttons">
+                          <a href="https://github.com/${{ github.repository }}" class="btn btn-primary">
+                              <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.08 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.12-.3-.54-1.53.12-3.19 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.89.12 3.19.77.84 1.24 1.92 1.24 3.23 0 4.63-2.81 5.65-5.49 5.95.43.37.81 1.1.81 2.22v3.29c0 .32.22.69.83.58A12 12 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                              </svg>
+                              View on GitHub
+                          </a>
+                          <a href="https://www.npmjs.com/package/uptime-kuma-sentinel" class="btn btn-secondary">
+                              📦 npm
+                          </a>
+                          <a href="https://hub.docker.com/r/jamiew/uptime-kuma-sentinel" class="btn btn-secondary">
+                              🐳 Docker Hub
+                          </a>
+                      </div>
+                  </div>
+              </header>
+
+              <main class="container">
+                  <section class="features">
+                      <div class="feature">
+                          <div class="feature-icon">🎯</div>
+                          <h3>Smart Detection</h3>
+                          <p>Automatically detects when your internet connection fails vs when services are actually down</p>
+                      </div>
+
+                      <div class="feature">
+                          <div class="feature-icon">🔕</div>
+                          <h3>No False Alarms</h3>
+                          <p>Pauses external monitors during outages so you only get alerts that matter</p>
+                      </div>
+
+                      <div class="feature">
+                          <div class="feature-icon">⚡</div>
+                          <h3>Real-time Response</h3>
+                          <p>Uses WebSocket connections for instant detection and response to connectivity changes</p>
+                      </div>
+                  </section>
+
+                  <section>
+                      <h2 style="text-align: center; color: var(--neon-green); margin-bottom: 2rem;">Quick Start</h2>
+
+                      <div class="code-block">
+                          <pre>docker run -d \
+    --name uptime-kuma-sentinel \
+    -e KUMA_URL=http://localhost:3001 \
+    -e KUMA_USER=admin \
+    -e KUMA_PASS=yourpassword \
+    ghcr.io/jamiew/uptime-kuma-sentinel:latest</pre>
+                      </div>
+                  </section>
+
+                  <section style="margin-top: 4rem;">
+                      <h2 style="text-align: center; color: var(--neon-pink); margin-bottom: 2rem;">How It Works</h2>
+
+                      <ol style="max-width: 600px; margin: 0 auto; font-size: 1.1rem; line-height: 2;">
+                          <li>🔍 Monitors a "sentinel" check (like google.com)</li>
+                          <li>📉 When sentinel fails, your internet is down</li>
+                          <li>⏸️ Automatically pauses external service monitors</li>
+                          <li>✅ When internet returns, resumes monitoring</li>
+                          <li>🎉 No more 3am false alarms!</li>
+                      </ol>
+                  </section>
+              </main>
+
+              <footer>
+                  <div class="container">
+                      <p>Built with 💚 by <a href="https://github.com/jamiew">jamiew</a></p>
+                      <p style="margin-top: 0.5rem; font-size: 0.875rem;">
+                          v${{ steps.meta.outputs.VERSION }} •
+                          <a href="https://github.com/${{ github.repository }}/releases">Releases</a> •
+                          <a href="https://github.com/${{ github.repository }}/issues">Issues</a> •
+                          <a href="https://github.com/${{ github.repository }}?tab=readme-ov-file#contributing">Contributing</a>
+                      </p>
+                  </div>
+              </footer>
+
+              <script>
+                  // Add some interactive animations
+                  document.querySelectorAll('.feature').forEach((card, index) => {
+                      card.style.animationDelay = `${index * 0.1}s`;
+                      card.style.animation = 'fadeInUp 0.6s ease-out forwards';
+                      card.style.opacity = '0';
+                  });
+
+                  // Fade in animation
+                  const style = document.createElement('style');
+                  style.textContent = `
+                      @keyframes fadeInUp {
+                          from {
+                              opacity: 0;
+                              transform: translateY(20px);
+                          }
+                          to {
+                              opacity: 1;
+                              transform: translateY(0);
+                          }
+                      }
+                  `;
+                  document.head.appendChild(style);
+
+                  // Add console easter egg
+                  console.log('%c🛸 uptime-kuma-sentinel', 'font-size: 20px; color: #00ff88; font-weight: bold;');
+                  console.log('%cNever get false alerts again!', 'font-size: 14px; color: #ff0099;');
+                  console.log('GitHub: https://github.com/${{ github.repository }}');
+              </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Deploy to GitHub Pages
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Checkout or create gh-pages branch
+          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
+
+          # Remove all files from the old working tree
+          git rm -rf . 2>/dev/null || true
+
+          # Copy the generated website
+          cp website/index.html .
+
+          # Create a simple 404 page
+          cp index.html 404.html
+
+          # Add CNAME file if custom domain is set
+          if [ -n "${{ vars.CUSTOM_DOMAIN }}" ]; then
+            echo "${{ vars.CUSTOM_DOMAIN }}" > CNAME
+          fi
+
+          # Commit and push
+          git add .
+          git commit -m "🚀 Deploy website - v${{ steps.meta.outputs.VERSION }}
+
+          Stats: ⭐ ${{ steps.meta.outputs.STARS }} stars | 🍴 ${{ steps.meta.outputs.FORKS }} forks | 📦 ${{ steps.meta.outputs.NPM_DOWNLOADS }} npm downloads
+
+          Automated deployment from ${{ steps.meta.outputs.COMMIT_SHA }}" || echo "No changes to commit"
+
+          git push origin gh-pages --force

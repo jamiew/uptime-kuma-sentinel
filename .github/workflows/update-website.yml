@@ -1,0 +1,167 @@
+name: Update Marketing Website
+
+on:
+  # Run on every push to main
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'package.json'
+      - '.github/workflows/update-website.yml'
+
+  # Run weekly to keep stats fresh
+  schedule:
+    - cron: '0 0 * * 0'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Custom prompt for Claude to update the website'
+        required: false
+        default: 'Update the marketing website with latest features and improvements'
+
+jobs:
+  update-website:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get repository stats
+        id: stats
+        run: |
+          echo "STARS=$(gh api repos/${{ github.repository }} --jq .stargazers_count)" >> $GITHUB_OUTPUT
+          echo "FORKS=$(gh api repos/${{ github.repository }} --jq .forks_count)" >> $GITHUB_OUTPUT
+          echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          echo "DESCRIPTION=$(node -p "require('./package.json').description")" >> $GITHUB_OUTPUT
+          echo "LAST_COMMIT=$(git log -1 --format=%B | head -1)" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Generate website content with Claude
+        id: generate
+        uses: actions/github-script@v7
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        with:
+          script: |
+            const fs = require('fs');
+            const { Anthropic } = require('@anthropic-ai/sdk');
+
+            // Initialize Claude
+            const anthropic = new Anthropic({
+              apiKey: process.env.ANTHROPIC_API_KEY,
+            });
+
+            // Read current README
+            const readme = fs.readFileSync('README.md', 'utf8');
+
+            // Get custom prompt or use default
+            const customPrompt = '${{ github.event.inputs.prompt }}' || '';
+
+            const prompt = `You are updating a cyberpunk-themed marketing website for uptime-kuma-sentinel.
+
+            Current repository stats:
+            - Version: ${{ steps.stats.outputs.VERSION }}
+            - Stars: ${{ steps.stats.outputs.STARS }}
+            - Forks: ${{ steps.stats.outputs.FORKS }}
+            - Latest commit: ${{ steps.stats.outputs.LAST_COMMIT }}
+
+            README content:
+            ${readme}
+
+            ${customPrompt ? `User request: ${customPrompt}` : ''}
+
+            Generate a complete, self-contained index.html file that:
+            1. Uses a cyberpunk/tech aesthetic with neon colors (green #00ff88, pink #ff0099)
+            2. Explains what uptime-kuma-sentinel does in an engaging way
+            3. Shows installation instructions (Docker, npm, source)
+            4. Includes live stats (stars, version, etc)
+            5. Has smooth animations and modern CSS
+            6. Is mobile-responsive
+            7. Includes links to GitHub, npm, Docker Hub
+            8. Has a "Get Started" section
+            9. Shows key features with icons
+            10. Includes testimonial-style benefits
+
+            Make it look professional but with personality. Include inline CSS and any necessary JavaScript.
+            Return ONLY the complete HTML code, no explanations.`;
+
+            const response = await anthropic.messages.create({
+              model: 'claude-3-sonnet-20241022',
+              max_tokens: 8000,
+              temperature: 0.7,
+              messages: [{
+                role: 'user',
+                content: prompt
+              }]
+            });
+
+            const html = response.content[0].text;
+
+            // Save to file
+            fs.writeFileSync('website.html', html);
+
+            return html.length;
+
+      - name: Install @anthropic-ai/sdk
+        run: npm install @anthropic-ai/sdk
+        if: env.ANTHROPIC_API_KEY != ''
+
+      - name: Deploy to GitHub Pages
+        if: success() && env.ANTHROPIC_API_KEY != ''
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Switch to gh-pages branch
+          git checkout gh-pages || git checkout -b gh-pages
+
+          # Copy the generated website
+          cp website.html index.html
+
+          # Commit and push
+          git add index.html
+          git commit -m "🤖 Update marketing website via Claude
+
+          Version: ${{ steps.stats.outputs.VERSION }}
+          Stars: ${{ steps.stats.outputs.STARS }}
+
+          Co-Authored-By: Claude <noreply@anthropic.com>"
+
+          git push origin gh-pages
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Deploy fallback (no Claude API key)
+        if: env.ANTHROPIC_API_KEY == ''
+        run: |
+          echo "⚠️ ANTHROPIC_API_KEY not set. Using existing website or creating basic one."
+
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Switch to gh-pages branch
+          git checkout gh-pages || git checkout -b gh-pages
+
+          # Create a basic update if index.html exists
+          if [ -f index.html ]; then
+            # Just update version number in existing HTML
+            sed -i "s/v[0-9]\+\.[0-9]\+\.[0-9]\+/v${{ steps.stats.outputs.VERSION }}/g" index.html
+            git add index.html
+            git commit -m "🤖 Update version to ${{ steps.stats.outputs.VERSION }}" || echo "No changes"
+            git push origin gh-pages
+          fi
