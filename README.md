@@ -8,11 +8,13 @@ Automatically pause and resume [Uptime Kuma](https://github.com/louislam/uptime-
 
 ## The Problem
 
-You're monitoring both local services and external sites with Uptime Kuma. When your internet connection drops at 3am, you suddenly get bombarded with alerts about "Google is down" and "GitHub is unreachable" - but they're not actually down, your ISP just had a hiccup. Meanwhile, your local services are fine but you can't tell through all the noise.
+You're monitoring both local services and external sites with Uptime Kuma. When your internet connection drops at 3am, you suddenly get bombarded with alerts about "Dumbwebsite.com is down" and "regrettableArt.net" is unreachable - but they're not actually down, your ISP just had a hiccup.
 
 ## The Solution
 
-This sentinel watches a designated monitor that checks internet connectivity, like example.com, google.com, or Cloudflare DNS. When the internet connection fails, it automatically pauses all monitors in a specified group. When connectivity is restored, it resumes them. Your local service monitoring continues uninterrupted, and you avoid false alarms from temporary connectivity issues.
+This sentinel watches a designated monitor that checks internet connectivity, like `example.com`, `google.com`, or Cloudflare DNS. When the internet connection fails, it automatically pauses all monitors in a specified group. When connectivity is restored, it resumes them. Your local service monitoring continues uninterrupted, and you avoid false alarms from temporary connectivity issues.
+
+This isn't natively supported inside Uptime Kuma so this adds support via (unofficial) API
 
 ## Install
 
